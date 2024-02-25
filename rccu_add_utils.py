@@ -130,6 +130,9 @@ def add_constraint_general(armature_name='',constraint_name='constraint', bone_n
                            floor_location='FLOOR_X',
                            use_rotation=False,
                            
+                           free_axis='SAMEVOL_Y',
+                           mode='STRICT',
+                           
                            volume=1.00,
                            use_bulge_min=False,
                            use_bulge_max=False,
@@ -464,6 +467,19 @@ def add_constraint_general(armature_name='',constraint_name='constraint', bone_n
                 constraint.mix_mode_scale = mix_mode_scale
                 constraint.mix_mode_rot   = mix_mode_rot
                 
+            if constraint_type == 'STRETCH_TO':
+                constraint.volume = volume
+                constraint.use_bulge_min = str_to_bool(use_bulge_min)
+                constraint.use_bulge_max = str_to_bool(use_bulge_max)
+                constraint.bulge_smooth = float(bulge_smooth)
+                constraint.bulge_min = float(bulge_min)
+                constraint.bulge_max = float(bulge_max)
+                constraint.keep_axis = keep_axis
+                
+            if constraint_type == 'MAINTAIN_VOLUME':
+                constraint.mode = mode
+                constraint.free_axis = free_axis
+
                 
                 
             if constraint_type == 'SHRINKWRAP':
