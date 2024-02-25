@@ -2,9 +2,9 @@ import bpy
 import os
 import sys
 bl_info = {
-    "name": "Rigify custom constraints utility BETA",
+    "name": "Rigify custom constraints utility",
     "author": "Velocirection (V-rex)",
-    "version" : (0, 0, 0, 2),
+    "version" : (1, 0, 0, 0),
     "blender" : (4, 0, 0),
     "location": "View3D - Properties",
     "description": "Utility to add custom constraints to a generated rigify armature.\n-Creates a folder and text file per-rig.\n-Saves constraints with 'CUST-' prefix on none MCH/DEF/ORG bones. Note: The following constraints are not support: Camera Solver, Follow Track, Object Solver, Armature",
@@ -67,9 +67,15 @@ class rccuMatchObjectAndDataName(bpy.types.Operator):
     
     def execute(self, context):
         print('>rccuMatchObjectAndDataName| Called...')     
-        obj = bpy.context.active_object
+        #obj = bpy.context.active_object
+        scene = context.scene
+        obj = scene.metarig_object
         if obj and obj.type == 'ARMATURE':
             obj.data.name = obj.name
+        if scene.metarig_target != None:
+            obj = scene.metarig_target
+            if obj and obj.type == 'ARMATURE':
+                obj.data.name = obj.name
         self.report({'INFO'}, 'Renamed armature data name to armature object name.')
         return {'FINISHED'}
     
@@ -203,10 +209,23 @@ class RCCU_PT_panel(bpy.types.Panel):
         layout.label(text='-MCH/DEF/ORG bones are not affected.')
         layout.label(text='-Armature object name must match name of armature data.')
         # armatures/bone box ------------------------------
-        box = layout.box()
+        
         #split = box.split()
         armature = bpy.context.view_layer.objects.active
 
+        if bpy.context.active_object == scene.metarig_object:
+            layout.label(text='Selected is \'Metarig\'')
+            box = layout.box()
+        elif bpy.context.active_object == bpy.data.armatures[scene.metarig_object.name].rigify_target_rig:
+            layout.label(text='Selected object is \'Target Rig\'')
+            box = layout.box()
+        else:
+            layout.label(text='WARNING: selected armature is not the \'Target Rig\' or \'Metarig\', operators disabled.')
+            box = layout.box()
+            box.enabled = False   
+
+            
+        
         box.operator(operator='scene.rccusaveconstraints', text='Save custom constraints')
         box.operator(operator='scene.rcculoadconstraints', text='Load custom constraints')
         box.operator(operator='scene.rccusetuprunscript', text='Setup Run Script')
@@ -214,12 +233,19 @@ class RCCU_PT_panel(bpy.types.Panel):
         box.operator(operator='scene.rccuregeneraterig', text='Re-Generate Rig')
         #box.row()
         
+
+        
         #split = box.split()
         #col1 = split.column()
         #col2 = split.column()
+        box = layout.box()
         box.label(text='Metarig: ')
         box.prop(scene, 'metarig_object', text="")
-        if scene.metarig_object != None:
+        armature = scene.metarig_object
+        generated_rig = None
+
+        
+        if scene.metarig_object != None and (scene.metarig_object.name == scene.metarig_object.data.name):
             box.label(text='Target Rig: ')
             box.prop(bpy.data.armatures[scene.metarig_object.name], 'rigify_target_rig', text="")
             box.label(text='Run Script: ')
@@ -236,9 +262,27 @@ class RCCU_PT_panel(bpy.types.Panel):
         if armature == None:
             row = layout.row()
             row.label(text=f'Warning: metarig is not selected!')
+
+        if armature != None and armature.name != armature.data.name:
+            row = layout.row()
+            row.label(text=f'Warning: metarig object name and data rig don\'t match!')
+            row = layout.row()
+            row.operator(operator='scene.rccumatchobjectanddataname', text='Match names')
+            return
+            
+        if generated_rig != None and generated_rig.name != generated_rig.data.name:
+            row = layout.row()
+            row.label(text=f'Warning: Generated rig object name and data rig don\'t match!')
+            row = layout.row()
+            row.operator(operator='scene.rccumatchobjectanddataname', text='Match names')
+            return
         
         if armature != None:
-            generated_rig = bpy.data.armatures[scene.metarig_object.name].rigify_target_rig
+            try:
+                generated_rig = bpy.data.armatures[scene.metarig_object.name].rigify_target_rig
+            except:
+                row = layout.row()
+                row.label(text=f'Warning: generated_rig not set')        
             
         if armature != None and armature.type == 'ARMATURE':
             row = layout.row()
@@ -248,12 +292,7 @@ class RCCU_PT_panel(bpy.types.Panel):
             row = layout.row()
             row.label(text=f'Target Rig: \'{generated_rig.name}\'')
             
-        if generated_rig != None and generated_rig.name != generated_rig.data.name:
-            row = layout.row()
-            row.label(text=f'Warning: Generated rig object name and data rig don\'t match!')
-            row = layout.row()
-            row.operator(operator='scene.rccumatchobjectanddataname', text='Match names')
-            return
+
         
         
 def register():
